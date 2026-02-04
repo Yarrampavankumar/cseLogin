@@ -1,29 +1,11 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 
-/* ================== MONGODB CONNECTION ================== */
-mongoose.connect("mongodb://localhost:27017/devopscse")
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.log("MongoDB Error:", err));
-
-/* ================== UPDATED MONGOOSE MODEL ================== */
-const accountSchema = new mongoose.Schema({
-    userName: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    userPassword: {
-        type: String,
-        required: true
-    }
-});
-
-const Account = mongoose.model("Account", accountSchema,"register");
+/* ================== TEMPORARY USER STORAGE ================== */
+const accounts = [];   // Acts like a database
 
 /* ================== HOME ================== */
 app.get("/", (req, res) => {
@@ -49,9 +31,15 @@ app.get("/signup", (req, res) => {
 app.post("/signup", async (req, res) => {
     const { userName, userPassword } = req.body;
 
+    // Check if user already exists
+    const existingUser = accounts.find(acc => acc.userName === userName);
+    if (existingUser) {
+        return res.send("User already exists");
+    }
+
     const hashedPassword = await bcrypt.hash(userPassword, 10);
 
-    await Account.create({
+    accounts.push({
         userName,
         userPassword: hashedPassword
     });
@@ -74,7 +62,7 @@ app.get("/signin", (req, res) => {
 app.post("/signin", async (req, res) => {
     const { userName, userPassword } = req.body;
 
-    const account = await Account.findOne({ userName });
+    const account = accounts.find(acc => acc.userName === userName);
     if (!account) return res.send("Account not found");
 
     const isMatch = await bcrypt.compare(userPassword, account.userPassword);
@@ -84,6 +72,6 @@ app.post("/signin", async (req, res) => {
 });
 
 /* ================== SERVER ================== */
-app.listen(3003, () => {
-    console.log("Server running on http://localhost:3002");
+app.listen(3004, () => {
+    console.log("Server running on http://localhost:3004");
 });
